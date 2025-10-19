@@ -7,17 +7,16 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     const version: std.SemanticVersion = try .parse(zon.version);
-
-    const lib = b.addLibrary(.{
-        .name = "volk",
-        .linkage = .static,
-        .version = version,
-        .root_module = b.createModule(.{ .target = target, .optimize = optimize, .link_libc = true, .imports = &.{} }),
-    });
-
-    const c_common_files = [_][]const u8{"volk.c"};
     const volk_source = b.dependency("volk", .{});
     const os_tag = target.query.os_tag orelse builtin.os.tag;
+
+    const volk = b.addTranslateC(.{
+        .root_source_file = volk_source.path("volk.h"),
+        .optimize = optimize,
+        .target = target,
+    });
+
+    const volk_mod = volk.createModule();
 
     var vulkan_include: std.Build.LazyPath = undefined;
 
@@ -26,21 +25,43 @@ pub fn build(b: *std.Build) !void {
     } else |err| {
         return err;
     }
-    lib.root_module.addIncludePath(vulkan_include);
 
-    const c_flags: [2][]const u8 = switch (os_tag) {
-        .windows => [_][]const u8{ "-DVK_USE_PLATFORM_WIN32_KHR", "-D_WIN32" },
-        .macos => [_][]const u8{ "-DVK_USE_PLATFORM_MACOS_MVK", "-D__APPLE__" },
-        .linux => [_][]const u8{ "-DVK_USE_PLATFORM_XLIB_KHR", "" },
-        else => [_][]const u8{ "", "" },
-    };
-    lib.root_module.addCSourceFiles(.{ .root = volk_source.path(""), .files = &c_common_files, .flags = &c_flags });
+    volk.addIncludePath(vulkan_include);
+    volk_mod.addIncludePath(vulkan_include);
 
-    lib.installHeadersDirectory(volk_source.path(""), "", .{
-        .include_extensions = &[_][]const u8{"volk.h"},
+    switch (os_tag) {
+        .windows => {
+            volk.defineCMacro("VK_USE_PLATFORM_WIN32_KHR", "1");
+            volk.defineCMacro("_WIN32", "1");
+            volk_mod.addCMacro("VK_USE_PLATFORM_WIN32_KHR", "1");
+            volk_mod.addCMacro("_WIN32", "1");
+        },
+
+        .macos => {
+            volk.defineCMacro("DVK_USE_PLATFORM_MACOS_MVK", "1");
+            volk.defineCMacro("D__APPLE__", "1");
+            volk_mod.addCMacro("DVK_USE_PLATFORM_MACOS_MVK", "1");
+            volk_mod.addCMacro("D__APPLE__", "1");
+        },
+
+        .linux => {
+            volk.defineCMacro("DVK_USE_PLATFORM_XLIB_KHR", "1");
+            volk_mod.addCMacro("DVK_USE_PLATFORM_XLIB_KHR", "1");
+        },
+
+        else => {},
+    }
+
+    volk_mod.addCSourceFiles(.{ .root = volk_source.path(""), .files = &.{"volk.c"}, .flags = &.{} });
+
+    const volk_lib = b.addLibrary(.{
+        .linkage = .static,
+        .name = "volk",
+        .version = version,
+        .root_module = volk_mod,
     });
 
-    b.installArtifact(lib);
+    b.installArtifact(volk_lib);
 }
 
 fn findVulkan(b: *std.Build) error{ VulkanNotFound, OutOfMemory }![]u8 {
