@@ -1,0 +1,19 @@
+.{
+    .name = .volk,
+    .version = "1.4.304",
+    .fingerprint = 0x3fb3303ad44e2b4f,
+    .minimum_zig_version = "0.15.1",
+
+    .dependencies = .{
+        .volk = .{
+            .url = "https://github.com/zeux/volk/archive/refs/tags/1.4.304.tar.gz",
+            .hash = "N-V-__8AAM6ZBgBIXgvAA8c_vDecqpmN19205AyaaSjzENaf",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
