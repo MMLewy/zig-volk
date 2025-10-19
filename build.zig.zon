@@ -1,6 +1,6 @@
 .{
     .name = .volk,
-    .version = "0.0.0",
+    .version = "1.4.304",
     .fingerprint = 0x3fb3303ad44e2b4f,
     .minimum_zig_version = "0.15.1",
 
