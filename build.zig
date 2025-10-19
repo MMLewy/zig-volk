@@ -19,19 +19,20 @@ pub fn build(b: *std.Build) !void {
     const volk_source = b.dependency("volk", .{});
     const os_tag = target.query.os_tag orelse builtin.os.tag;
 
-    var vulkan_include: []u8 = undefined;
+    var vulkan_include: std.Build.LazyPath = undefined;
 
-    if (findVulkan(b)) |path2| {
-        vulkan_include = try std.mem.concat(b.allocator, u8, &.{ "-I", path2 });
+    if (findVulkan(b)) |path| {
+        vulkan_include = .{ .cwd_relative = path };
     } else |err| {
         return err;
     }
+    lib.root_module.addIncludePath(vulkan_include);
 
-    const c_flags: [3][]const u8 = switch (os_tag) {
-        .windows => [_][]const u8{ "-DVK_USE_PLATFORM_WIN32_KHR", "-D_WIN32", vulkan_include },
-        .macos => [_][]const u8{ "-DVK_USE_PLATFORM_MACOS_MVK", "-D__APPLE__", vulkan_include },
-        .linux => [_][]const u8{ "-DVK_USE_PLATFORM_XLIB_KHR", "", vulkan_include },
-        else => [_][]const u8{ "", "", vulkan_include },
+    const c_flags: [2][]const u8 = switch (os_tag) {
+        .windows => [_][]const u8{ "-DVK_USE_PLATFORM_WIN32_KHR", "-D_WIN32" },
+        .macos => [_][]const u8{ "-DVK_USE_PLATFORM_MACOS_MVK", "-D__APPLE__" },
+        .linux => [_][]const u8{ "-DVK_USE_PLATFORM_XLIB_KHR", "" },
+        else => [_][]const u8{ "", "" },
     };
     lib.root_module.addCSourceFiles(.{ .root = volk_source.path(""), .files = &c_common_files, .flags = &c_flags });
 
