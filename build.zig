@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
     });
 
-    const volk_mod = volk.createModule();
+    const volk_mod = volk.addModule("volk");
 
     var vulkan_include: std.Build.LazyPath = undefined;
 
